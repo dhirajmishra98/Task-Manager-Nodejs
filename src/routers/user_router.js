@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const User = require('../models/user_model');
 
 const userRouter = new express.Router();
@@ -17,7 +18,7 @@ userRouter.post('/users', async (req, res) => {
     });
     */
 
-    const user = new User(req.body);
+    const user = new User(req.body); //when call User(data), it goes to schema, where it is encrypted and arrives here
     try {
         await user.save();
         res.status(201).send(user);  
@@ -61,7 +62,12 @@ userRouter.patch('/users/:id', async (req, res)=>{
 
     const _id = req.params.id;
     try{
-        const user = await User.findByIdAndUpdate(_id, req.body, {new: true, runValidators: true});
+        //this lines causes middleware to run and update
+        const user = await User.findById(req.params.id);
+        updates.forEach((update) => user[update] = req.body[update]); //user.update is stataic, user[update] is dynamic
+        await user.save(); //because this will fire middleware by updated value, for now it hashes the password
+
+        // const user = await User.findByIdAndUpdate(_id, req.body, {new: true, runValidators: true}); //it does direct modfication on database which will not use middleware
         if(!user) res.status(404).send({msg: "User not found"});
         res.send(user);
     }catch(e){

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const validator = require('validator')
+const validator = require('validator');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
     name:{
@@ -43,5 +44,16 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-const userModel =new mongoose.model('User', userSchema);
+//middleware
+//pre is doing before user is 'save', post is doing something after user is 'save;
+userSchema.pre('save', async function(next){
+    const user = this; //this is user to be saved
+    if(user.isModified('password')){
+        user.password = await bcrypt.hash(user.password, 8);
+    }
+    next(); //indicates function is over , and proceed next call, if not called user will not be created and code remains here always
+});
+
+const userModel = mongoose.model('User', userSchema);
+
 module.exports = userModel;

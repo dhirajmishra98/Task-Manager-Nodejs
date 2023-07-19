@@ -39,13 +39,18 @@ taskRouter.get('/tasks/:id',async (req, res) => {
 //update task by id
 taskRouter.patch('/tasks/:id',async (req, res)=>{
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['description','isDone'];
+    const allowedUpdates = ['description','completed'];
     const isValidUpdate = updates.every((update)=> allowedUpdates.includes(update));
 
     if(!isValidUpdate) return res.status(400).send({error: "Invalid Update!"});
     const _id = req.params.id;
     try{
-        const task = await Task.findByIdAndUpdate(_id, req.body, {new:true, runValidators:true});
+        //to use middleware
+        const task = await Task.findById(req.params.id);
+        updates.forEach((update)=> task[update]=req.body[update]);
+        await task.save();
+
+        // const task = await Task.findByIdAndUpdate(_id, req.body, {new:true, runValidators:true});
         if(!task) return res.status(404).send({msg: "Task not found"});
 
         res.send(task);
