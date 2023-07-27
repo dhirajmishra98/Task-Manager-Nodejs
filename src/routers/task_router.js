@@ -1,11 +1,15 @@
 const express = require('express');
+const authMiddleware = require('../middlewares/auth_middleware');
 const Task = require('../models/task_model');
 
 const taskRouter = new express.Router();
 
 //create new task
-taskRouter.post('/tasks', async (req, res) => {
-    const task = new Task(req.body);
+taskRouter.post('/tasks', authMiddleware ,async (req, res) => {
+    const task = new Task({
+        ...req.body, //it copies all the req body(description, complete) to new task object
+        owner: req.user._id
+    })
     try{
         await task.save();
         res.status(201).send(task);
@@ -14,21 +18,27 @@ taskRouter.post('/tasks', async (req, res) => {
     }
 })
 
-//get all tasks
-taskRouter.get('/tasks',async (req, res) => {
+//get all tasks of logged in user
+taskRouter.get('/tasks', authMiddleware,async (req, res) => {
     try{
-        const tasks = await Task.find({});
-        res.send(tasks);
+        // first approach to return all task of logged in user
+        // const tasks = await Task.find({ owner: req.user._id});
+        // res.send(tasks);
+
+        // //second approach
+        console.log(req.user);
+        await req.user.populate({path:'tasks'})
+        res.send(req.user.tasks);
     }catch(e){
         res.status(500).send({error: e.message});
     }
 })
 
-//get task by id
-taskRouter.get('/tasks/:id',async (req, res) => {
+//get task by id of logged in user
+taskRouter.get('/tasks/:id', authMiddleware,async (req, res) => {
     const _id = req.params.id;
     try{
-        const task =await Task.findById(_id);
+        const task =await Task.findOne({ _id, owner: req.user._id});
         if(!task) res.status(404).send({msg: "Task not found"});
         res.send(task);
     }catch(e){
@@ -36,22 +46,21 @@ taskRouter.get('/tasks/:id',async (req, res) => {
     }
 })
 
-//update task by id
-taskRouter.patch('/tasks/:id',async (req, res)=>{
+//update task by id of logged in user
+taskRouter.patch('/tasks/:id',authMiddleware,async (req, res)=>{
     const updates = Object.keys(req.body);
     const allowedUpdates = ['description','completed'];
     const isValidUpdate = updates.every((update)=> allowedUpdates.includes(update));
 
     if(!isValidUpdate) return res.status(400).send({error: "Invalid Update!"});
-    const _id = req.params.id;
     try{
         //to use middleware
-        const task = await Task.findById(req.params.id);
-        updates.forEach((update)=> task[update]=req.body[update]);
-        await task.save();
-
+        const task = await Task.findOne({ _id:req.params.id, owner:req.user._id });
+        
         // const task = await Task.findByIdAndUpdate(_id, req.body, {new:true, runValidators:true});
         if(!task) return res.status(404).send({msg: "Task not found"});
+        updates.forEach((update)=> task[update]=req.body[update]);
+        await task.save();
 
         res.send(task);
     }catch(e){
@@ -59,11 +68,10 @@ taskRouter.patch('/tasks/:id',async (req, res)=>{
     }
 } )
  
-//delete task by id
-taskRouter.delete('/tasks/:id', async (req,res)=>{
-    const _id = req.params.id;
+//delete task by id and loggedin user
+taskRouter.delete('/tasks/:id',authMiddleware, async (req,res)=>{
     try{
-        const task = await Task.findByIdAndDelete({ _id });
+        const task = await Task.findOneAndDelete({ _id: req.params.id, owner: req.user._id});
         if(!task) return res.status(404).send({error: "Task not found!"});
         res.send(task);
     }catch(e){

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Task = require('./task_model');
 
 const userSchema = new mongoose.Schema({
     name:{
@@ -53,6 +54,14 @@ const userSchema = new mongoose.Schema({
     }]
 });
 
+
+//virtual doesn't store real data on database on scheme, but it only establishes the relationship with other models
+userSchema.virtual('tasks',{
+    ref: 'Task', //refrence this relation with Task model
+    localField: '_id', //this is localfield of this model -> User & its id
+    foreignField: 'owner' //this field exits on foreing model -> Task
+})
+
 //methods can be used outside on instances (user) : like in user routes
 userSchema.methods.generateAuthTokens = async function(){
     const user = this; //access the user instance from where it is called
@@ -93,12 +102,22 @@ userSchema.statics.findByCredentials = async (email, password) =>{
 //encrption is reversible : password->encryption->encrypted password->decryption->password
 //pre is doing before user is 'save', post is doing something after user is 'save;
 userSchema.pre('save', async function(next){
-    const user = this; //this is user to be saved
+    const user = this; //this is user to be saved, we have to save object(user)
     if(user.isModified('password')){
         user.password = await bcrypt.hash(user.password, 8);
     }
     next(); //indicates function is over , and proceed next call, if not called user will not be created and code remains here always
 });
+
+//delete all tasks when user is removed
+// In Mongoose middleware, this does not refer to the document being deleted, but rather to the Mongoose Query object. 
+userSchema.pre('deleteOne', { document: true, query: false }, async function(next){
+    const user = this //`this` now refers to the document being deleted, we have to delete document(task),
+    console.log(user)
+    await Task.deleteMany({owner: user._id});
+    next();
+    console.log("deletign all tasks");
+})
 
 const userModel = mongoose.model('User', userSchema);
 

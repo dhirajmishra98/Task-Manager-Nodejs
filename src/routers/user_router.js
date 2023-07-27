@@ -99,7 +99,7 @@ userRouter.patch('/users/me',authMiddleware ,async (req, res)=>{
 //delete own user id
 userRouter.delete('/users/me', authMiddleware, async (req, res)=>{
     try{
-        await req.user.deleteOne();
+        await req.user.remove();
         res.send({user: req.user, msg:"user removed from database"});
     }catch(e){
         res.status(500).send({error : e.message});
