@@ -1,45 +1,22 @@
 const mongoose = require('mongoose')
-const userModel = require('../models/user_model');
-const taskModel = require('../models/task_model')
 
 const connectionUrl = 'mongodb://127.0.0.1:27017/task-manager-api'
 
-mongoose.connect(connectionUrl, {useNewUrlParser: true, autoIndex: true});
+mongoose.connect(connectionUrl, { useNewUrlParser: true, autoIndex: true, dbName: "Task-Manger-Api"});
 
 
-// const user = new userModel({
-//     name: "    Dhiraj mIhsra  ",
-//     email: "Gobindmishra@gmail.com",
-//     password: "1234"
-// })
+// Event listener for successful connection
+mongoose.connection.on('connected', ()=>{
+    console.log("Connected to MongoDb");
+})
 
-// user.save().then(()=>{
-//     console.log("User ",user);
-// }).catch((error)=>{
-//     console.log("Error ",error);
-// });
+// Event listener for connection error
+mongoose.connection.on('error', (err)=>{
+    console.log("Error Occurred connecting to mongodb : ",err);
+})
 
-// const Task = mongoose.model("Task", taskSchema);
+// Event listener for disconnected
+mongoose.connection.on('disconnected', ()=>{
+    console.log("Disconnected from mongoDB");
+})
 
-// const task = new taskModel({
-//     description: "Learn Nodjs     ",
-// });
-
-// task.save().then(()=>{
-//     console.log(task);
-// }).catch((error)=>{
-//     console.log(error);
-// })
-
-// const User = mongoose.model("User", userSchema);
-
-// const user = new User({
-//     name: "dhiraj msihra",
-//     age: 22,
-// });
-
-// user.save().then(()=>{
-//     console.log("User ",user);
-// }).catch((error)=>{
-//     console.log("Error ",error);
-// });

@@ -1,4 +1,6 @@
 const express = require('express');
+const multer = require('multer');
+const sharp = require('sharp');
 const bcrypt = require('bcryptjs');
 const authMiddleware = require('../middlewares/auth_middleware');
 const User = require('../models/user_model');
@@ -103,6 +105,58 @@ userRouter.delete('/users/me', authMiddleware, async (req, res)=>{
         res.send({user: req.user, msg:"user removed from database"});
     }catch(e){
         res.status(500).send({error : e.message});
+    }
+})
+
+//configure multer with file configuration etc
+const upload = multer({
+    // dest: 'avatar/', //this property will save data in local filesystem, without this we will specify to save in database in cloud
+    limits: {
+        fileSize: 1000000, //filesize in bytes, it is 1mb, files greater than 1mb willbe rejected
+    },
+    fileFilter (req, file, cb) {
+        //we can add logic for type of files this way or use regex
+        // if(!file.originalname.endsWith('.jpg')){
+        //     return cb(new Error('file upload failed!'));
+        // }
+
+        //using regex from regex101.com website
+        if(!file.originalname.match(/\.(jpg|jpeg|png)$/)){
+            return cb(new Error('please upload image'));
+        }
+        cb(undefined, true);
+    }
+})
+
+//upload user own avatar
+userRouter.post('/users/me/avatar',authMiddleware, upload.single('avatar'), async (req, res)=>{
+    const buffer = await sharp(req.file.buffer).resize({height: 250, width:250}).png().toBuffer();
+    req.user.avatar = buffer;
+    await req.user.save();
+    res.status(200).send({msg: "Avatar upload success"});
+},(error, req, res, next)=>{
+    //this section handles error occured with multer
+    res.status(400).send({error: error.message});
+})
+
+//delete user own avatar
+userRouter.delete('/users/me/avatar', authMiddleware, async (req, res)=>{
+    req.user.avatar = undefined;
+    await req.user.save();
+    res.status(200).send({msg: "Avatar deleted success"});
+})
+
+userRouter.get('/users/:id/avatar', async (req, res)=>{
+    try{
+        const user = await User.findById(req.params.id);
+
+        if(!user || !user.avatar){
+            throw new Error("No avatar found!");
+        }
+        res.set('Content-Type','image/png');
+        res.send(user.avatar);
+    }catch(e){
+        res.status(404).send({error: e.message});
     }
 })
 

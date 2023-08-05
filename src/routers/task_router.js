@@ -19,15 +19,38 @@ taskRouter.post('/tasks', authMiddleware ,async (req, res) => {
 })
 
 //get all tasks of logged in user
+//get filtering url = GET /tasks?completed=true or false
+//get with pagination (limit and skip : limit means how many data to show in one page, skip means how many data to skip)
+//url = GET /tasks?limit=10&skip=20, means 10data in one page, and skip 20data , means currently on 3rd page with 21-30s data
+//sorting url = GET/tasks?sortBy=createdAt:desc
 taskRouter.get('/tasks', authMiddleware,async (req, res) => {
+    const match = {};
+    const sort = {};
+
+    if(req.query.completed){
+        match.completed = req.query.completed === 'true';
+    }
+
+    if(req.query.sortBy){
+        const parts = req.query.sortBy.split(':');
+        sort[parts[0]] = parts[1]==='desc'?-1:1;
+    }
+
     try{
         // first approach to return all task of logged in user
         // const tasks = await Task.find({ owner: req.user._id});
         // res.send(tasks);
 
         // //second approach
-        console.log(req.user);
-        await req.user.populate({path:'tasks'})
+        await req.user.populate({
+            path:'tasks',
+            match,
+            options: {
+                limit: parseInt(req.query.limit),
+                skip: parseInt(req.query.skip),
+                sort
+            }
+        })
         res.send(req.user.tasks);
     }catch(e){
         res.status(500).send({error: e.message});
